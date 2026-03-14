@@ -220,23 +220,42 @@ async function handleFileSelect(file) {
   if(!file) return;
   if(!file.name.toLowerCase().endsWith('.csv')) return showErr('Please select a .csv file.');
   
-  const formData = new FormData();
-  formData.append('file', file);
-
   const dz = document.getElementById('drop-zone');
   const ogHtml = dz.innerHTML;
-  dz.innerHTML = '<p class="dz-main"><strong>Uploading...</strong></p><p class="dz-sub">Sending to processing server</p>';
+  dz.innerHTML = '<p class="dz-main"><strong>Preparing...</strong></p><p class="dz-sub">Compressing file for upload</p>';
   document.getElementById('upload-error').style.display = 'none';
 
   try {
+    const formData = new FormData();
+    if (typeof CompressionStream !== 'undefined') {
+      const stream = file.stream();
+      const compressedStream = stream.pipeThrough(new CompressionStream('gzip'));
+      const compressedResponse = new Response(compressedStream);
+      const compressedBlob = await compressedResponse.blob();
+      formData.append('file', new File([compressedBlob], file.name + '.gz', { type: 'application/gzip' }));
+    } else {
+      formData.append('file', file);
+    }
+
+    dz.innerHTML = '<p class="dz-main"><strong>Uploading...</strong></p><p class="dz-sub">Sending to processing server</p>';
+
     const res = await fetch(`${BACKEND_URL}/api/analyze`, {
       method: 'POST',
       body: formData
     });
     
     if(!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || `Server error: ${res.status}`);
+        const text = await res.text();
+        let errorMsg = `HTTP Error ${res.status}`;
+        try {
+            const err = JSON.parse(text);
+            errorMsg = err.detail || errorMsg;
+        } catch {
+            if (res.status === 413) errorMsg = "File is too large to process. Vercel's free tier has a strict payload limit. Please try a smaller file or chunk.";
+            else if (res.status === 504) errorMsg = "Server took too long to process the file (Timeout). Vercel limits functions to 10s.";
+            else errorMsg = text.slice(0, 150) + "...";
+        }
+        throw new Error(errorMsg);
     }
     
     dz.innerHTML = '<p class="dz-main"><strong>Processing...</strong></p><p class="dz-sub">Building network layout</p>';

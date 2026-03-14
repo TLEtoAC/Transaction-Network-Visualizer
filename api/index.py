@@ -6,6 +6,7 @@ import pandas as pd
 import networkx as nx
 import math
 import tempfile
+import gzip
 from collections import defaultdict
 import datetime
 
@@ -51,15 +52,22 @@ def _percentile(data, pct):
 async def analyze_csv(
     file: UploadFile = File(...),
 ):
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Must be a CSV file")
+    is_gzipped = file.filename.endswith('.gz')
+    if not (file.filename.lower().endswith('.csv') or is_gzipped):
+        raise HTTPException(status_code=400, detail="Must be a CSV or GZIP file")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
         try:
             content = await file.read()
+            if is_gzipped:
+                try:
+                    content = gzip.decompress(content)
+                except Exception as e:
+                    raise HTTPException(status_code=400, detail="Error decompressing GZIP file")
             tmp.write(content)
             tmp_path = tmp.name
         except Exception as e:
+            if isinstance(e, HTTPException): raise e
             raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
     try:
