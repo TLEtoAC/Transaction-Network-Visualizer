@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transaction Network Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;min-height:100vh;color:#1a1a1a}
+#upload-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+#upload-card{background:#fff;border-radius:16px;border:1px solid #e0e0e0;padding:40px 48px;max-width:560px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.06)}
+#upload-card h1{font-size:22px;font-weight:600;margin-bottom:8px}
+#upload-card p{font-size:14px;color:#666;margin-bottom:28px;line-height:1.6}
+#drop-zone{border:2px dashed #c8d0dc;border-radius:12px;padding:36px 24px;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:20px}
+#drop-zone:hover,#drop-zone.drag-over{border-color:#378ADD;background:#f0f6ff}
+#drop-zone svg{margin-bottom:12px;opacity:.45}
+#drop-zone .dz-main{font-size:14px;color:#888;margin:0}
+#drop-zone .dz-main strong{color:#378ADD}
+#drop-zone .dz-sub{font-size:12px;color:#bbb;margin-top:4px}
+#file-input{display:none}
+.or-divider{display:flex;align-items:center;gap:12px;margin:0 0 20px;font-size:12px;color:#aaa}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:#e8e8e8}
+.btn-ghost{padding:8px 18px;background:transparent;color:#378ADD;border:1px solid #c8d8ee;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s}
+.btn-ghost:hover{background:#f0f6ff}
+#csv-format{background:#f8f9fb;border-radius:10px;padding:14px 18px;text-align:left;font-size:12px;color:#666;margin-top:20px}
+#csv-format strong{display:block;margin-bottom:8px;color:#444;font-size:13px}
+.col-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.col-tag{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
+.col-required{background:#e8f0fb;color:#1a5faa}
+.col-optional{background:#f0f0f0;color:#666}
+.format-detail{line-height:1.9;font-size:11px}
+.format-detail code{font-family:'SFMono-Regular',Consolas,monospace;background:#eef0f4;padding:1px 5px;border-radius:3px}
+#upload-error{display:none;margin-top:14px;padding:10px 14px;background:#fce8e8;border-radius:8px;font-size:13px;color:#c0392b;text-align:left}
+#app{display:none;flex-direction:column;height:100vh;overflow:hidden}
+#top-bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#fff;border-bottom:1px solid #e8e8e8;flex-shrink:0;flex-wrap:wrap}
+#top-bar h2{font-size:14px;font-weight:600}
+#file-name-badge{font-size:12px;color:#666;background:#f0f0f0;padding:3px 9px;border-radius:20px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-sep{width:1px;height:20px;background:#e0e0e0;flex-shrink:0}
+.tb-label{font-size:12px;color:#777;white-space:nowrap}
+.tb-btn{font-size:12px;padding:4px 10px;border:1px solid #d0d0d0;border-radius:6px;background:#fff;color:#333;cursor:pointer;transition:background .15s;white-space:nowrap}
+.tb-btn:hover{background:#f0f0f0}
+.tb-btn.active{background:#e8f0fb;border-color:#a0b8e0;color:#1a5faa}
+.tb-btn-back{font-size:12px;padding:4px 10px;border:1px solid #f0c8c8;border-radius:6px;background:#fff;color:#c0392b;cursor:pointer;margin-left:auto;white-space:nowrap}
+.tb-btn-back:hover{background:#fce8e8}
+#main-body{display:flex;flex:1;overflow:hidden}
+#sidebar{width:210px;flex-shrink:0;background:#fafafa;border-right:1px solid #e8e8e8;overflow-y:auto;padding:12px;font-size:12px}
+.side-section{margin-bottom:16px}
+.side-title{font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:12px;color:#555;margin-bottom:5px}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.leg-line{width:22px;height:2px;flex-shrink:0;border-radius:1px}
+.stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.stat-val{font-weight:600;color:#1a1a1a}
+.stat-lbl{color:#999}
+#canvas-col{display:flex;flex-direction:column;flex:1;overflow:hidden}
+#canvas-wrap{position:relative;overflow:hidden;background:#fff;flex:1}
+#gc{display:block;width:100%;height:100%;cursor:grab}
+#gc.grabbing{cursor:grabbing}
+#tooltip{position:absolute;display:none;background:#fff;border:1px solid #ddd;border-radius:10px;padding:11px 13px;font-size:12px;min-width:170px;max-width:230px;pointer-events:none;z-index:10;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.tt-name{font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:7px}
+.tt-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:3px}
+.tt-lbl{color:#999}
+.tt-val{font-weight:500;color:#1a1a1a}
+.tt-div{height:1px;background:#f0f0f0;margin:6px 0}
+.tt-susp{color:#c0392b;font-weight:600;margin-top:5px;font-size:11px}
+#detail-panel{display:none;border-top:1px solid #e8e8e8;background:#fafafa;padding:12px 16px;font-size:12px;flex-shrink:0;max-height:260px;overflow-y:auto}
+.dp-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dp-title{font-weight:600;font-size:13px}
+.dp-badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600}
+.dp-normal{background:#e6f4ea;color:#1e7e34}
+.dp-suspicious{background:#fce8e8;color:#c0392b}
+.dp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:7px 18px;margin-bottom:10px}
+.dp-lbl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.03em}
+.dp-val{font-weight:600;font-size:13px;color:#1a1a1a;margin-top:1px}
+.dp-txn-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 20px}
+.dp-txn-title{font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;margin-bottom:5px}
+.dp-txn-row{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f5f5f5;font-size:11px}
+.dp-amt{margin-left:auto;font-weight:600}
+.dp-date{color:#bbb;font-size:10px;margin-left:4px}
+.threshold-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.threshold-row input[type=range]{flex:1;accent-color:#378ADD}
+.threshold-row span{font-size:11px;font-weight:600;color:#378ADD;min-width:36px}
+</style>
+</head>
+<body>
+
+<!-- UPLOAD SCREEN -->
+<div id="upload-screen">
+  <div id="upload-card">
+    <h1>Transaction Network Visualizer</h1>
+    <p>Upload a CSV with your transaction data to explore the network of accounts, flows, and suspicious patterns.</p>
+
+    <div id="drop-zone"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <p class="dz-main"><strong>Click to upload</strong> or drag &amp; drop</p>
+      <p class="dz-sub">CSV files only</p>
+    </div>
+    <input type="file" id="file-input" accept=".csv" onchange="handleFileSelect(this.files[0])">
+
+    <div class="or-divider">or</div>
+    <button class="btn-ghost" onclick="loadDemo()">Load demo data</button>
+
+    <div id="csv-format">
+      <strong>Expected CSV columns</strong>
+      <div class="col-tags">
+        <span class="col-tag col-required">sender</span>
+        <span class="col-tag col-required">counterparty</span>
+        <span class="col-tag col-required">amount</span>
+        <span class="col-tag col-optional">timestamp</span>
+        <span class="col-tag col-optional">suspicious</span>
+      </div>
+      <div class="format-detail">
+        <code>sender</code> &amp; <code>counterparty</code> — account IDs or names<br>
+        <code>amount</code> — numeric value, e.g. <code>15000.00</code><br>
+        <code>timestamp</code> — any date string (optional)<br>
+        <code>suspicious</code> — <code>true</code>/<code>false</code>/<code>1</code>/<code>0</code> (optional, auto-detected if absent)
+      </div>
+    </div>
+    <div id="upload-error"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="app">
+  <div id="top-bar">
+    <h2>Transaction Network</h2>
+    <span id="file-name-badge">—</span>
+    <div class="tb-sep"></div>
+    <span class="tb-label">View:</span>
+    <button class="tb-btn active" id="btn-all"  onclick="filterView('all')">All</button>
+    <button class="tb-btn"        id="btn-susp" onclick="filterView('suspicious')">Suspicious only</button>
+    <div class="tb-sep"></div>
+    <span class="tb-label">Node size:</span>
+    <button class="tb-btn active" id="btn-txn" onclick="setSizeMode('txn')">Txn count</button>
+    <button class="tb-btn"        id="btn-vol" onclick="setSizeMode('volume')">Volume</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="resetView()">Reset</button>
+    <button class="tb-btn" onclick="zoomIn()">+ Zoom</button>
+    <button class="tb-btn" onclick="zoomOut()">− Zoom</button>
+    <button class="tb-btn-back" onclick="goBack()">&#8592; New file</button>
+  </div>
+  <div id="main-body">
+    <div id="sidebar">
+      <div class="side-section">
+        <div class="side-title">Nodes</div>
+        <div class="legend-item"><div class="leg-dot" style="background:#378ADD"></div>Normal account</div>
+        <div class="legend-item"><div class="leg-dot" style="background:#E24B4A"></div>Suspicious account</div>
+      </div>
+      <div class="side-section">
+        <div class="side-title">Edges</div>
+        <div class="legend-item"><div class="leg-line" style="background:#378ADD"></div>Normal txn</div>
+        <div class="legend-item"><div class="leg-line" style="background:#E24B4A"></div>Suspicious txn</div>
+        <div style="font-size:10px;color:#ccc;margin-top:2px">Thickness = amount &nbsp;·&nbsp; Arrow = direction</div>
+      </div>
+      <div class="side-section" id="threshold-section">
+        <div class="side-title">Auto-flag threshold</div>
+        <div style="font-size:11px;color:#999;line-height:1.5">Flag txns above % of max</div>
+        <div class="threshold-row">
+          <input type="range" id="susp-slider" min="10" max="95" value="70" oninput="updateThreshold(this.value)">
+          <span id="susp-pct">70%</span>
+        </div>
+        <div style="font-size:10px;color:#ccc;margin-top:3px">Only used when no <code>suspicious</code> col</div>
+      </div>
+      <div class="side-section">
+        <div class="side-title">Network stats</div>
+        <div class="stat-row"><span class="stat-lbl">Accounts</span><span class="stat-val" id="stat-nodes">—</span></div>
+        <div class="stat-row"><span class="stat-lbl">Transactions</span><span class="stat-val" id="stat-edges">—</span></div>
+        <div class="stat-row"><span class="stat-lbl">Suspicious txns</span><span class="stat-val" style="color:#c0392b" id="stat-susp">—</span></div>
+        <div class="stat-row"><span class="stat-lbl">Total volume</span><span class="stat-val" id="stat-vol">—</span></div>
+        <div class="stat-row" id="date-row" style="display:none">
+          <span class="stat-lbl">Date range</span>
+          <span class="stat-val" id="stat-dates" style="font-size:10px;text-align:right;max-width:110px">—</span>
+        </div>
+      </div>
+      <div class="side-section">
+        <div class="side-title">Top by volume</div>
+        <div id="top-list"></div>
+      </div>
+    </div>
+
+    <div id="canvas-col">
+      <div id="canvas-wrap">
+        <canvas id="gc"></canvas>
+        <div id="tooltip"></div>
+      </div>
+      <div id="detail-panel">
+        <div id="dp-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let ACCOUNTS = [], TRANSACTIONS = [], nodeMap = {};
+let viewFilter = 'all', sizeMode = 'txn';
+let transform = {x:0, y:0, scale:1};
+let dragging = false, lastMouse = null;
+let hoveredNode = null, selectedNode = null;
+let hasSuspCol = false, suspPct = 0.70;
+let _dateRange = null;
+let networkStats = {};
+let topAccounts = [];
+
+// ─────────────────────────────────────────────
+//  FILE / DATA LOADING
+// ─────────────────────────────────────────────
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+  ? 'http://127.0.0.1:8000' 
+  : '';
+
+async function handleFileSelect(file) {
+  if(!file) return;
+  if(!file.name.toLowerCase().endsWith('.csv')) return showErr('Please select a .csv file.');
+  
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const dz = document.getElementById('drop-zone');
+  const ogHtml = dz.innerHTML;
+  dz.innerHTML = '<p class="dz-main"><strong>Uploading...</strong></p><p class="dz-sub">Sending to processing server</p>';
+  document.getElementById('upload-error').style.display = 'none';
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/analyze`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if(!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || `Server error: ${res.status}`);
+    }
+    
+    dz.innerHTML = '<p class="dz-main"><strong>Processing...</strong></p><p class="dz-sub">Building network layout</p>';
+    const data = await res.json();
+    loadDashboardData(data, file.name);
+    
+  } catch(e) {
+    dz.innerHTML = ogHtml;
+    showErr(e.message);
+  }
+}
+
+function loadDashboardData(data, name) {
+  // Translate backend JSON (nodes, edges, stats, top) into frontend format
+  ACCOUNTS = data.nodes.map(n => ({
+    id: n.id,
+    name: n.name || n.id,
+    suspicious: n._susp,
+    in_cycle: n._cycle,
+    inflow: n.inflow,
+    outflow: n.outflow,
+    net: n.net,
+    txnCount: n.txnCount,
+    suspCount: n.suspCount,
+    pagerank: n.pagerank,
+    x: undefined, y: undefined
+  }));
+  
+  TRANSACTIONS = data.edges.map(e => ({
+    from: e.from,
+    to: e.to,
+    amount: e.amount,    // Note: this is total weight, not individual txn amount
+    count: e.count,
+    suspicious: e.suspicious
+  }));
+  
+  nodeMap = {}; 
+  ACCOUNTS.forEach(a => nodeMap[a.id] = a);
+  networkStats = data.stats;
+  topAccounts = data.top;
+  
+  // Set global flags used by UI rules
+  hasSuspCol = true; // In Vercel, the backend auto-thresholds if absent, so we don't need UI threshold slider anymore.
+  
+  launchDashboard(name);
+}
+
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function onDragLeave()  { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  if(e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]);
+}
+
+function showErr(msg) {
+  const el = document.getElementById('upload-error');
+  el.innerHTML = '<strong>Error:</strong> ' + msg;
+  el.style.display = 'block';
+}
+
+async function loadDemo() {
+  const dz = document.getElementById('drop-zone');
+  const ogHtml = dz.innerHTML;
+  dz.innerHTML = '<p class="dz-main"><strong>Loading Demo...</strong></p><p class="dz-sub">Sending to processing server</p>';
+  document.getElementById('upload-error').style.display = 'none';
+
+  try {
+    const csvContent = `sender,counterparty,amount,timestamp,suspicious
+Alpha Corp,Shadow LLC,850000,2024-01-15,true
+Shadow LLC,Ghost Traders,750000,2024-01-16,true
+Ghost Traders,Phantom Co,690000,2024-01-17,true
+Phantom Co,Shadow LLC,620000,2024-01-18,true
+Alpha Corp,Beta Holdings,120000,2024-01-10,false
+Beta Holdings,Gamma Invest,45000,2024-01-11,false
+Gamma Invest,Delta Trust,30000,2024-01-12,false
+Delta Trust,Omega Bank,95000,2024-01-13,false
+Omega Bank,Alpha Corp,200000,2024-01-14,false
+Nexus Fin,Alpha Corp,75000,2024-01-09,false
+Zeta Capital,Iris Fund,55000,2024-01-08,false
+Iris Fund,Vortex Inc,110000,2024-01-09,false
+Vortex Inc,Omega Bank,180000,2024-01-10,false
+Shadow LLC,Alpha Corp,400000,2024-01-20,true
+Ghost Traders,Alpha Corp,300000,2024-01-21,true
+Beta Holdings,Omega Bank,88000,2024-01-12,false
+Omega Bank,Nexus Fin,62000,2024-01-13,false
+Nexus Fin,Zeta Capital,41000,2024-01-14,false
+Phantom Co,Ghost Traders,580000,2024-01-19,true
+Gamma Invest,Vortex Inc,35000,2024-01-15,false`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const file = new File([blob], 'demo_data.csv', { type: 'text/csv' });
+    
+    await handleFileSelect(file);
+    
+  } catch(e) {
+    dz.innerHTML = ogHtml;
+    showErr(e.message);
+  }
+}
+
+function goBack() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'flex';
+  const dz = document.getElementById('drop-zone');
+  dz.innerHTML = `
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <p class="dz-main"><strong>Click to upload</strong> or drag &amp; drop</p>
+      <p class="dz-sub">CSV files only</p>
+  `;
+  ACCOUNTS=[]; TRANSACTIONS=[]; selectedNode=null; hoveredNode=null;
+}
+
+// ─────────────────────────────────────────────
+//  DASHBOARD INIT
+// ─────────────────────────────────────────────
+function launchDashboard(name) {
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('file-name-badge').textContent=name;
+  
+  // hide threshold section since backend does this now
+  document.getElementById('threshold-section').style.display='none';
+  
+  transform={x:0,y:0,scale:1};
+  viewFilter='all'; sizeMode='txn'; selectedNode=null;
+  ['btn-all','btn-txn'].forEach(id=>document.getElementById(id).classList.add('active'));
+  ['btn-susp','btn-vol'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById('detail-panel').style.display='none';
+  updateStats();
+  buildTopList();
+  setTimeout(resize, 80);
+}
+
+function updateStats() {
+  document.getElementById('stat-nodes').textContent = networkStats.total_nodes ? networkStats.total_nodes.toLocaleString() : "—";
+  document.getElementById('stat-edges').textContent = networkStats.total_edges ? networkStats.total_edges.toLocaleString() : "—";
+  if (networkStats.sampled) {
+    document.getElementById('stat-edges').innerHTML += ` <span style="font-size:10px;color:#f39c12;" title="More than limit edges found. Showing top ${networkStats.rendered_edges} by volume.">⚠ Sampled</span>`;
+  }
+  document.getElementById('stat-susp').textContent = networkStats.susp_nodes ? networkStats.susp_nodes.toLocaleString() : TRANSACTIONS.filter(t=>t.suspicious).length;
+  document.getElementById('stat-vol').textContent = fmt(networkStats.total_amount || TRANSACTIONS.reduce((s,t)=>s+t.amount,0));
+}
+
+function buildTopList() {
+  const sorted = topAccounts || [...ACCOUNTS].sort((a,b)=>(b.inflow+b.outflow)-(a.inflow+a.outflow)).slice(0,6);
+  document.getElementById('top-list').innerHTML=sorted.map(a=>`
+    <div style="display:flex;justify-content:space-between;margin-bottom:5px;gap:4px">
+      <span style="color:${a.suspicious||a._susp?'#c0392b':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:118px" title="${a.name}">${a.name}</span>
+      <span style="font-weight:600;color:#1a1a1a;flex-shrink:0">${fmt(a.inflow+a.outflow)}</span>
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────────────
+//  CANVAS / RENDER
+// ─────────────────────────────────────────────
+const canvas=document.getElementById('gc');
+const ctx=canvas.getContext('2d');
+const wrap=document.getElementById('canvas-wrap');
+const tip=document.getElementById('tooltip');
+
+function initPos(W,H) {
+  const cx=W/2,cy=H/2,r=Math.min(W,H)*0.38;
+  ACCOUNTS.forEach((a,i) => {
+    if(a.x===undefined){
+      const angle=(i/ACCOUNTS.length)*Math.PI*2-Math.PI/2;
+      a.x=cx+r*Math.cos(angle); a.y=cy+r*Math.sin(angle);
+    }
+  });
+}
+
+function nodeR(a) {
+  const val=sizeMode==='txn'?a.txnCount:(a.inflow+a.outflow);
+  const vals=ACCOUNTS.map(x=>sizeMode==='txn'?x.txnCount:(x.inflow+x.outflow));
+  const mn=Math.min(...vals),mx=Math.max(...vals);
+  return 11+(mx===mn?0:(val-mn)/(mx-mn))*22;
+}
+
+function edgeW(amount) {
+  const mx=Math.max(...TRANSACTIONS.map(t=>t.amount));
+  return 1+(amount/mx)*4.5;
+}
+
+function fmt(n) {
+  if(n>=1e9) return '$'+(n/1e9).toFixed(1)+'B';
+  if(n>=1e6) return '$'+(n/1e6).toFixed(1)+'M';
+  if(n>=1e3) return '$'+(n/1e3).toFixed(0)+'K';
+  return '$'+Math.round(n);
+}
+function fmtD(d){ return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+
+function sc(x,y){ return [x*transform.scale+transform.x, y*transform.scale+transform.y]; }
+function inv(sx,sy){ return [(sx-transform.x)/transform.scale,(sy-transform.y)/transform.scale]; }
+
+function arrow(sx,sy,ex,ey,color,w,alpha) {
+  const dx=ex-sx,dy=ey-sy,len=Math.hypot(dx,dy);
+  if(len<1)return;
+  const nx=-dy/len,ny=dx/len,curve=14;
+  const mx=(sx+ex)/2+nx*curve,my=(sy+ey)/2+ny*curve;
+  ctx.save(); ctx.globalAlpha=alpha;
+  ctx.beginPath(); ctx.moveTo(sx,sy); ctx.quadraticCurveTo(mx,my,ex,ey);
+  ctx.strokeStyle=color; ctx.lineWidth=w; ctx.stroke();
+  const t=0.88;
+  const ax=(1-t)*(1-t)*sx+2*(1-t)*t*mx+t*t*ex;
+  const ay=(1-t)*(1-t)*sy+2*(1-t)*t*my+t*t*ey;
+  const adx=ex-ax,ady=ey-ay,al=Math.hypot(adx,ady)||1,s=7;
+  ctx.beginPath();
+  ctx.moveTo(ex,ey);
+  ctx.lineTo(ex-(adx/al)*s+(ady/al)*s*0.4, ey-(ady/al)*s-(adx/al)*s*0.4);
+  ctx.lineTo(ex-(adx/al)*s-(ady/al)*s*0.4, ey-(ady/al)*s+(adx/al)*s*0.4);
+  ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const visTxns=viewFilter==='suspicious'?TRANSACTIONS.filter(t=>t.suspicious):TRANSACTIONS;
+  const visIds=new Set();
+  if(viewFilter==='suspicious'){visTxns.forEach(t=>{visIds.add(t.from);visIds.add(t.to);});}
+  else{ACCOUNTS.forEach(a=>visIds.add(a.id));}
+
+  visTxns.forEach(t=>{
+    const f=nodeMap[t.from],r=nodeMap[t.to]; if(!f||!r)return;
+    const [sx,sy]=sc(f.x,f.y),[ex,ey]=sc(r.x,r.y);
+    const color=t.suspicious?'#E24B4A':'#378ADD';
+    const isHL=selectedNode&&(t.from===selectedNode.id||t.to===selectedNode.id);
+    arrow(sx,sy,ex,ey,color,edgeW(t.amount),selectedNode?(isHL?0.9:0.07):0.55);
+  });
+
+  ACCOUNTS.forEach(a=>{
+    if(!visIds.has(a.id))return;
+    const r=nodeR(a),[sx,sy]=sc(a.x,a.y);
+    const isHov=hoveredNode&&hoveredNode.id===a.id;
+    const isSel=selectedNode&&selectedNode.id===a.id;
+    const dim=selectedNode&&!isSel;
+    ctx.save(); ctx.globalAlpha=dim?0.18:1;
+    if(a.suspicious&&!dim){ctx.beginPath();ctx.arc(sx,sy,r+7,0,Math.PI*2);ctx.fillStyle='rgba(226,75,74,.12)';ctx.fill();}
+    ctx.beginPath(); ctx.arc(sx,sy,(isHov||isSel)?r+2.5:r,0,Math.PI*2);
+    ctx.fillStyle=a.suspicious?'#E24B4A':'#378ADD'; ctx.fill();
+    ctx.strokeStyle=a.suspicious?'#A32D2D':'#185FA5'; ctx.lineWidth=isSel?2.5:0.8; ctx.stroke();
+    ctx.restore();
+    ctx.save(); ctx.globalAlpha=dim?0.14:1;
+    ctx.fillStyle='#333'; ctx.font=`${isSel?'600 ':''}11px -apple-system,sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText(a.name.length>15?a.name.slice(0,14)+'…':a.name, sx, sy+r+4);
+    ctx.restore();
+  });
+}
+
+// ─────────────────────────────────────────────
+//  TOOLTIP
+// ─────────────────────────────────────────────
+function hitNode(mx,my) {
+  const [wx,wy]=inv(mx,my);
+  let best=null,bd=Infinity;
+  ACCOUNTS.forEach(a=>{const d=Math.hypot(a.x-wx,a.y-wy);if(d<nodeR(a)+5&&d<bd){best=a;bd=d;}});
+  return best;
+}
+
+function showTip(a,mx,my) {
+  const ratio=a.inflow>0?(a.inflow/(a.inflow+a.outflow)*100).toFixed(0):0;
+  tip.innerHTML=`
+    <div class="tt-name">${a.name}</div>
+    <div class="tt-row"><span class="tt-lbl">Inflow</span><span class="tt-val" style="color:#1e7e34">${fmt(a.inflow)}</span></div>
+    <div class="tt-row"><span class="tt-lbl">Outflow</span><span class="tt-val" style="color:#c0392b">${fmt(a.outflow)}</span></div>
+    <div class="tt-row"><span class="tt-lbl">In/out ratio</span><span class="tt-val">${ratio}% in</span></div>
+    <div class="tt-div"></div>
+    <div class="tt-row"><span class="tt-lbl">Txns sent</span><span class="tt-val">${TRANSACTIONS.filter(t=>t.from===a.id).length}</span></div>
+    <div class="tt-row"><span class="tt-lbl">Txns received</span><span class="tt-val">${TRANSACTIONS.filter(t=>t.to===a.id).length}</span></div>
+    ${a.suspicious?'<div class="tt-susp">⚠ Flagged suspicious</div>':''}`;
+  tip.style.display='block';
+  const rect=wrap.getBoundingClientRect();
+  let tx=mx+14,ty=my-10;
+  if(tx+240>rect.width)tx=mx-244; if(ty+210>rect.height)ty=my-220;
+  tip.style.left=tx+'px'; tip.style.top=ty+'px';
+}
+
+// ─────────────────────────────────────────────
+//  DETAIL PANEL
+// ─────────────────────────────────────────────
+function showDetail(a) {
+  const outT=TRANSACTIONS.filter(t=>t.from===a.id).sort((x,y)=>y.amount-x.amount).slice(0,5);
+  const inT= TRANSACTIONS.filter(t=>t.to  ===a.id).sort((x,y)=>y.amount-x.amount).slice(0,5);
+  const partners=new Set([...TRANSACTIONS.filter(t=>t.from===a.id).map(t=>t.to),...TRANSACTIONS.filter(t=>t.to===a.id).map(t=>t.from)]);
+  const net=a.inflow-a.outflow;
+  document.getElementById('dp-content').innerHTML=`
+    <div class="dp-header">
+      <span class="dp-title">${a.name}</span>
+      <span class="dp-badge ${a.suspicious?'dp-suspicious':'dp-normal'}">${a.suspicious?'Suspicious':'Normal'}</span>
+      <span style="margin-left:auto;font-size:11px;color:#bbb;cursor:pointer" onclick="closeDetail()">✕ close</span>
+    </div>
+    <div class="dp-grid">
+      <div><div class="dp-lbl">Inflow</div><div class="dp-val" style="color:#1e7e34">${fmt(a.inflow)}</div></div>
+      <div><div class="dp-lbl">Outflow</div><div class="dp-val" style="color:#c0392b">${fmt(a.outflow)}</div></div>
+      <div><div class="dp-lbl">Net flow</div><div class="dp-val" style="color:${net>=0?'#1e7e34':'#c0392b'}">${fmt(Math.abs(net))} ${net>=0?'surplus':'deficit'}</div></div>
+      <div><div class="dp-lbl">In/out ratio</div><div class="dp-val">${a.inflow>0?(a.inflow/(a.inflow+a.outflow)*100).toFixed(0):0}% in</div></div>
+      <div><div class="dp-lbl">Txns sent</div><div class="dp-val">${TRANSACTIONS.filter(t=>t.from===a.id).length}</div></div>
+      <div><div class="dp-lbl">Txns received</div><div class="dp-val">${TRANSACTIONS.filter(t=>t.to===a.id).length}</div></div>
+      <div><div class="dp-lbl">Suspicious txns</div><div class="dp-val" style="color:${a.suspCount>0?'#c0392b':'#aaa'}">${a.suspCount}</div></div>
+      <div><div class="dp-lbl">Unique partners</div><div class="dp-val">${partners.size}</div></div>
+    </div>
+    <div class="dp-txn-grid">
+      <div>
+        <div class="dp-txn-title">Top sent</div>
+        ${outT.length?outT.map(t=>`<div class="dp-txn-row"><span style="color:#888;font-size:10px">→</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px">${t.to}</span><span class="dp-amt" style="color:${t.suspicious?'#c0392b':'#1a1a1a'}">${fmt(t.amount)}${t.suspicious?' ⚠':''}</span>${t.timestamp?`<span class="dp-date">${fmtD(t.timestamp)}</span>`:''}</div>`).join(''):'<div style="color:#ddd;font-size:11px">None</div>'}
+      </div>
+      <div>
+        <div class="dp-txn-title">Top received</div>
+        ${inT.length?inT.map(t=>`<div class="dp-txn-row"><span style="color:#378ADD;font-size:10px">←</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px">${t.from}</span><span class="dp-amt" style="color:${t.suspicious?'#c0392b':'#1a1a1a'}">${fmt(t.amount)}${t.suspicious?' ⚠':''}</span>${t.timestamp?`<span class="dp-date">${fmtD(t.timestamp)}</span>`:''}</div>`).join(''):'<div style="color:#ddd;font-size:11px">None</div>'}
+      </div>
+    </div>`;
+  document.getElementById('detail-panel').style.display='block';
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').style.display='none';
+  selectedNode=null; draw();
+}
+
+// ─────────────────────────────────────────────
+//  MOUSE + TOUCH EVENTS
+// ─────────────────────────────────────────────
+canvas.addEventListener('mousemove',e=>{
+  if(!ACCOUNTS.length)return;
+  const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  if(dragging&&lastMouse){transform.x+=mx-lastMouse.x;transform.y+=my-lastMouse.y;lastMouse={x:mx,y:my};tip.style.display='none';draw();return;}
+  const node=hitNode(mx,my);
+  if(node){if(!hoveredNode||hoveredNode.id!==node.id){hoveredNode=node;draw();}canvas.style.cursor='pointer';showTip(node,mx,my);}
+  else{if(hoveredNode){hoveredNode=null;draw();}canvas.style.cursor='grab';tip.style.display='none';}
+});
+canvas.addEventListener('mousedown',e=>{
+  const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  if(!hitNode(mx,my)){dragging=true;lastMouse={x:mx,y:my};canvas.classList.add('grabbing');}
+});
+canvas.addEventListener('mouseup',e=>{
+  const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  const node=hitNode(mx,my);
+  if(node&&!dragging){
+    if(selectedNode&&selectedNode.id===node.id)closeDetail();
+    else{selectedNode=node;showDetail(node);}
+    draw();
+  }
+  dragging=false;lastMouse=null;canvas.classList.remove('grabbing');
+});
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  const d=e.deltaY>0?0.88:1.13;
+  transform.x=mx-(mx-transform.x)*d;transform.y=my-(my-transform.y)*d;
+  transform.scale=Math.max(0.2,Math.min(5,transform.scale*d));draw();
+},{passive:false});
+canvas.addEventListener('mouseleave',()=>{dragging=false;lastMouse=null;hoveredNode=null;tip.style.display='none';draw();});
+
+let pinchDist=null;
+canvas.addEventListener('touchstart',e=>{if(e.touches.length===1){const t=e.touches[0];lastMouse={x:t.clientX,y:t.clientY};dragging=true;}if(e.touches.length===2){pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}},{passive:true});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(e.touches.length===1&&lastMouse){const t=e.touches[0];transform.x+=t.clientX-lastMouse.x;transform.y+=t.clientY-lastMouse.y;lastMouse={x:t.clientX,y:t.clientY};draw();}
+  if(e.touches.length===2&&pinchDist){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY),ratio=d/pinchDist;const cx=(e.touches[0].clientX+e.touches[1].clientX)/2-canvas.getBoundingClientRect().left;const cy=(e.touches[0].clientY+e.touches[1].clientY)/2-canvas.getBoundingClientRect().top;transform.x=cx-(cx-transform.x)*ratio;transform.y=cy-(cy-transform.y)*ratio;transform.scale=Math.max(0.2,Math.min(5,transform.scale*ratio));pinchDist=d;draw();}
+},{passive:false});
+canvas.addEventListener('touchend',()=>{dragging=false;lastMouse=null;pinchDist=null;},{passive:true});
+
+// ─────────────────────────────────────────────
+//  TOOLBAR
+// ─────────────────────────────────────────────
+function filterView(v){
+  viewFilter=v;
+  document.getElementById('btn-all').classList.toggle('active',v==='all');
+  document.getElementById('btn-susp').classList.toggle('active',v==='suspicious');
+  selectedNode=null;closeDetail();draw();
+}
+function setSizeMode(m){
+  sizeMode=m;
+  document.getElementById('btn-txn').classList.toggle('active',m==='txn');
+  document.getElementById('btn-vol').classList.toggle('active',m==='volume');
+  draw();
+}
+function resetView(){
+  transform={x:0,y:0,scale:1};
+  ACCOUNTS.forEach(a=>{a.x=undefined;a.y=undefined;});
+  const r=wrap.getBoundingClientRect();initPos(r.width,r.height);
+  selectedNode=null;closeDetail();draw();
+}
+function zoomIn(){applyZoom(1.25);}
+function zoomOut(){applyZoom(0.8);}
+function applyZoom(d){
+  const r=wrap.getBoundingClientRect(),cx=r.width/2,cy=r.height/2;
+  transform.x=cx-(cx-transform.x)*d;transform.y=cy-(cy-transform.y)*d;
+  transform.scale=Math.max(0.2,Math.min(5,transform.scale*d));draw();
+}
+
+// ─────────────────────────────────────────────
+//  RESIZE
+// ─────────────────────────────────────────────
+function resize(){
+  const r=wrap.getBoundingClientRect();
+  canvas.width=r.width*devicePixelRatio;canvas.height=r.height*devicePixelRatio;
+  canvas.style.width=r.width+'px';canvas.style.height=r.height+'px';
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  initPos(r.width,r.height);draw();
+}
+new ResizeObserver(resize).observe(wrap);
+</script>
+</body>
+</html>
